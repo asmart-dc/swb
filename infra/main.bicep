@@ -29,6 +29,17 @@ module datalake './modules/datalake.bicep' = {
   }
 }
 
+module sql_server './modules/sql_server.bicep' = {
+  name: 'sql_server_deploy_${deployment_id}'
+  params: {
+    project: project
+    env: env
+    location: location
+    deployment_id: deployment_id
+    sql_server_password: sql_server_password
+  }
+}
+
 module keyvault './modules/keyvault.bicep' = {
   name: 'keyvault_deploy_${deployment_id}'
   params: {
@@ -43,3 +54,9 @@ module keyvault './modules/keyvault.bicep' = {
     datafactory
   ]
 }
+
+output storage_account_name string = datalake.outputs.storage_account_name
+output sql_server_output object = sql_server.outputs.sql_server_output
+output keyvault_name string = keyvault.outputs.keyvault_name
+output keyvault_resource_id string = keyvault.outputs.keyvault_resource_id
+output datafactory_name string = datafactory.outputs.datafactory_name
