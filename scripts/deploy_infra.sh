@@ -85,4 +85,28 @@ az keyvault secret set --vault-name "$kv_name" --name "datalakeAccountName" --va
 az keyvault secret set --vault-name "$kv_name" --name "datalakeKey" --value "$azure_storage_key"
 az keyvault secret set --vault-name "$kv_name" --name "datalakeurl" --value "https://$azure_storage_account.dfs.core.windows.net"
 
+###################
+# SQL
 
+echo "Retrieving SQL Server information from the deployment."
+# Retrieve SQL creds
+sql_server_name=$(echo "$arm_output" | jq -r '.properties.outputs.sql_server_output.value.name')
+sql_server_username=$(echo "$arm_output" | jq -r '.properties.outputs.sql_server_output.value.username')
+sql_dw_database_name=$(echo "$arm_output" | jq -r '.properties.outputs.sql_server_output.value.database_name')
+
+# SQL Connection String
+sql_dw_connstr_nocred=$(az sql db show-connection-string --client ado.net \
+    --name "$sql_dw_database_name" --server "$sql_server_name" --output json |
+    jq -r .)
+sql_dw_connstr_uname=${sql_dw_connstr_nocred/<username>/$sql_server_username}
+sql_dw_connstr_uname_pass=${sql_dw_connstr_uname/<password>/$AZURESQL_SERVER_PASSWORD}
+
+# Store in Keyvault
+az keyvault secret set --vault-name "$kv_name" --name "sqlsrvrName" --value "$sql_server_name"
+az keyvault secret set --vault-name "$kv_name" --name "sqlsrvUsername" --value "$sql_server_username"
+az keyvault secret set --vault-name "$kv_name" --name "sqlsrvrPassword" --value "$AZURESQL_SERVER_PASSWORD"
+az keyvault secret set --vault-name "$kv_name" --name "sqldwDatabaseName" --value "$sql_dw_database_name"
+az keyvault secret set --vault-name "$kv_name" --name "sqldwConnectionString" --value "$sql_dw_connstr_uname_pass"
+
+####################
+# DATA FACTORY

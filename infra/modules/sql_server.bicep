@@ -26,7 +26,7 @@ resource sql_server 'Microsoft.Sql/servers@2022-05-01-preview' = {
   }
 
   resource sql_database 'databases@2022-05-01-preview' = {
-    name: ${database_name}
+    name: database_name
     location: location
     tags: {
       Environment: env
@@ -52,4 +52,5 @@ resource sql_server 'Microsoft.Sql/servers@2022-05-01-preview' = {
 output sql_server_output object = {
   name: sql_server.name
   username: sql_server_username
+  database_name: sql_server::sql_database.name
 }
