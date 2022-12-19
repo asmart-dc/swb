@@ -71,7 +71,7 @@ done
 
 # Add source system folders
 for file_system in raw structured; do
-  sources=("Artifax" "Spektrix" "Access HR" "Access Financials" "Team Tailer")
+  sources=("Artifax" "Spektrix" "Access HR" "Access Financials" "TeamTailor")
   for folder in "${sources[@]}"; do
       echo "Creating folder: $folder"
       az storage fs directory create -n "Provider/$folder" -f "$file_system" --account-name "$azure_storage_account" --account-key "$azure_storage_key"
