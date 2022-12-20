@@ -1,0 +1,37 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '14.x'
+  displayName: 'Install Node.js'
+
+- task: Npm@1
+  inputs:
+    command: 'install'
+    workingDir: '$(Build.Repository.LocalPath)/devops'
+    verbose: true
+  displayName: 'Install npm package'
+
+- task: Npm@1
+  inputs:
+    command: 'custom'
+    workingDir: '$(Build.Repository.LocalPath)/devops'
+    customCommand: 'run build validate $(Build.Repository.LocalPath)/adf $(adfResourceId)'
+
+- task: Npm@1
+  inputs:
+    command: 'custom'
+    workingDir: '$(Build.Repository.LocalPath)/devops'
+    customCommand: 'run build export $(Build.Repository.LocalPath)/adf $(adfResourceId) "artifact/armTemplate"'
+  displayName: 'Validate and Generate ARM template'
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.Repository.LocalPath)/devops/artifact'
+    artifact: '$(adfName)-armTemplate'
+    publishLocation: 'pipeline'
