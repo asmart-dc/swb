@@ -110,3 +110,24 @@ az keyvault secret set --vault-name "$kv_name" --name "sqldwConnectionString" --
 
 ####################
 # DATA FACTORY
+
+# Store in Keyvault
+datafactory_name=$(echo "$arm_output" | jq -r '.properties.outputs.datafactory_name.value')
+az keyvault secret set --vault-name "$kv_name" --name "adfName" --value "$datafactory_name"
+
+####################
+# AzDO Variable Groups
+PROJECT=$PROJECT \
+ENV_NAME=$ENV_NAME \
+AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID \
+RESOURCE_GROUP_NAME=$resource_group_name \
+AZURE_LOCATION=$AZURE_LOCATION \
+KV_URL=$kv_dns_name \
+SQL_SERVER_NAME=$sql_server_name \
+SQL_SERVER_USERNAME=$sql_server_username \
+SQL_SERVER_PASSWORD=$AZURESQL_SERVER_PASSWORD \
+SQL_DW_DATABASE_NAME=$sql_dw_database_name \
+AZURE_STORAGE_KEY=$azure_storage_key \
+AZURE_STORAGE_ACCOUNT=$azure_storage_account \
+DATAFACTORY_NAME=$datafactory_name \
+    bash -c "./scripts/deploy_azdo_variables.sh"
