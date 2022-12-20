@@ -4,6 +4,12 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
+variables:
+- group: fidwh-secrets-dev
+- group: fidwh-release-dev
+- name: adfResourceId
+- value: '/subscriptions/$(subscriptionId)/resourceGroups/$(rgName)/providers/Microsoft.DataFactory/factories/$(adfName)'
+
 steps:
 - task: NodeTool@0
   inputs:

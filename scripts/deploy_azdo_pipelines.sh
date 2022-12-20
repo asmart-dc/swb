@@ -15,13 +15,21 @@ createPipeline () {
         --repository "$AZDO_REPO" \
         --repository-type tfsgit \
         --branch "$AZDO_PIPELINES_BRANCH_NAME" \
-        --yaml-path "/devops/azure-pipelines-$pipeline_name.yml" \
+        --yaml-path "devops/azure-pipelines-$pipeline_name.yml" \
         --skip-first-run true \
         --output json | jq -r '.id')
     echo "$pipeline_id"
 }
 
 # Build Pipelines
+pipelines=("ci-qa-adf" "ci-qa-python")
+for pipeline in "${pipelines[@]}"; do
+  if pipeline_id=$(az pipelines list -o tsv | grep "$pipeline" | awk '{print $4}'); then
+      echo "Pipline: $pipeline already exists. Deleting..."
+      az pipelines delete --id "$pipeline_id" -y
+  fi
+done
+createPipeline "ci-qa-adf" "adf"
 #createPipeline "ci-qa-python" "This pipeline runs python unit tests and linting."
 #createPipeline "ci-qa-sql" "This pipeline builds the sql dacpac"
 #createPipeline "ci-artifacts" "This pipeline publishes build artifacts"

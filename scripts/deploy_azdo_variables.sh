@@ -28,7 +28,6 @@ az pipelines variable-group create \
         azureLocation="$AZURE_LOCATION" \
         rgName="$RESOURCE_GROUP_NAME" \
         adfName="$DATAFACTORY_NAME" \
-
     --output json
 
 # Create vargroup - for secrets
