@@ -13,7 +13,7 @@ param account_name string = 'factoryintl'
 param devops_project string = 'Factory Intl Data Warehouse'
 param repository_name string = 'factoryintl-dwh'
 param collaboration_branch string = 'master'
-param root_folder string = '/factoryintl-dwh/adf'
+param root_folder string = '/adf'
 
 var azDevopsRepoConfiguration  = {
   accountName: account_name
