@@ -30,7 +30,7 @@ if [[ -n $prefix ]]; then
             echo "Deleting resource groups that start with '$prefix' in the name..."
             [[ -n $prefix ]] &&
                 az group list --query "[?contains(name,'$prefix') && ! contains(name,'dbw')].name" -o tsv |
-                xargs -I % az group delete --verbose --name % -y
+                xargs -d '\r' -I % az group delete --verbose --name % -y
             ;;
         *)
             exit
