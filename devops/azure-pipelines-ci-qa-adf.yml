@@ -33,11 +33,11 @@ steps:
   inputs:
     command: 'custom'
     workingDir: '$(Build.Repository.LocalPath)/devops'
-    customCommand: 'run build export $(Build.Repository.LocalPath)/adf $(adfResourceId) "artifact/armTemplate"'
+    customCommand: 'run build export $(Build.Repository.LocalPath)/adf $(adfResourceId) "armTemplate"'
   displayName: 'Validate and Generate ARM template'
 
 - task: PublishPipelineArtifact@1
   inputs:
-    targetPath: '$(Build.Repository.LocalPath)/devops/artifact'
+    targetPath: '$(Build.Repository.LocalPath)/devops/'
     artifact: '$(adfName)-armTemplate'
     publishLocation: 'pipeline'
