@@ -1,0 +1,40 @@
+- trigger: none
+
+- pr: none
+
+- stage: deploy_to_dev
+  displayName: 'Deploy to DEV'
+  variables:
+  - group: fidwh-secrets-dev
+  - group: fidwh-release-dev
+  jobs:
+    - deployment: deploy_dev
+      displayName: 'Deployment - DEV'
+      pool:
+        vmImage: 'ubuntu-latest'
+      environment: 'DEV'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadPipelineArtifact @2
+                displayName: 'Download Build Artifacts - ADF ARM templates'
+                inputs:
+                  artifactName: '$(adfName)-armTemplate'
+                  targetPath: '$(Pipeline.Workspace)/$(adfName)-armTemplate'
+              - script: dir
+                displayName: 'List files in workspace'
+                workingDirectory: '$(Pipeline.Workspace)/$(adfName)-armTemplate'
+              - task: AzureResourceManagerTemplateDeployment @3
+                displayName: 'Deploying to DEV Data Factory Service'
+                inputs:
+                  deploymentScope: 'Resource Group'
+                  azureResourceManagerConnection: 'myServiceConnection'
+                  subscriptionId: '$(subscriptionId)'
+                  action: 'Create Or Update Resource Group'
+                  resourceGroupName: '$(rgName)'
+                  location: '$(azureLocation)'
+                  templateLocation: 'Linked artifact'
+                  csmFile: '$(Pipeline.Workspace)/$(adfName)-armTemplate/ARMTemplateForFactory.json'
+                  csmParametersFile: '$(Pipeline.Workspace)/$(adfName)-armTemplate/ARMTemplateParametersForFactory.json'
+                  overrideParameters: '-factoryName "$(adfName)" -AzureKeyVault1_properties_typeProperties_baseUrl "($kvUrl)"'
