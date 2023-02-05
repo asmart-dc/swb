@@ -158,13 +158,13 @@ class ArtifaxProcessor:
 
         now = datetime.now().strftime("%Y%m%dT%H%M%S")
 
-        filename = f"{self.endpoint}/{self.import_date}/{filename}_{now}.csv"
+        filename = f"{self.endpoint}/{filename}/{self.import_date}/{filename}_{now}.csv"
         datalake.upload_file_to_directory(filename, data)
 
         return filename
 
     def _arrangement(self, json_data):
-        logging.info("Normalise room entity")
+        logging.info("Normalise arrangement entity")
 
         normalised_data = []
 
@@ -225,7 +225,7 @@ class ArtifaxProcessor:
         return normalised_data
 
     def _event(self, json_data):
-        logging.info("Normalise room entity")
+        logging.info("Normalise event entity")
 
         normalised_data = []
 
@@ -236,8 +236,17 @@ class ArtifaxProcessor:
 
         return normalised_data
 
-    def _venue(self):
-        pass
+    def _venue(self, json_data):
+        logging.info("Normalise venue entity")
+
+        normalised_data = []
+
+        # venue
+        df = pd.json_normalize(json_data)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'venue', 'data': data})
+
+        return normalised_data
 
     def _room(self, json_data):
         logging.info("Normalise room entity")
@@ -266,8 +275,42 @@ class ArtifaxProcessor:
 
         return normalised_data
 
-    def _locale(self):
-        pass
+    def _locale(self, json_data):
+        logging.info("Normalise locale entity")
 
-    def _event_activity(self):
-        pass
+        normalised_data = []
+
+        # locale
+        df = pd.json_normalize(json_data)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'locale', 'data': data})
+
+        return normalised_data
+
+    def _event_activity(self, json_data):
+        logging.info("Normalise event activity entity")
+
+        normalised_data = []
+
+        # event activity
+        cols = [
+            'activity_id', 'background_color', 'code', 'custom_forms',
+            'event_activity_name', 'text_color'
+        ]
+        df = pd.json_normalize(json_data)
+        df = df[cols]
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'event_activity', 'data': data})
+
+        # event activity arrangement types
+        df = pd.json_normalize(json_data, record_path=['arrangement_types'], meta=['activity_id'])
+        df = df.drop(columns=['name'])
+        df.rename(columns={'id': 'arrangement_type_id'}, inplace=True)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'event_activity_arrangement_type', 'data': data})
+
+        return normalised_data
+
+
+
+
