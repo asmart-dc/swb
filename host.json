@@ -4,7 +4,7 @@
     "id": "Microsoft.Azure.Functions.ExtensionBundle",
     "version": "[3.*, 4.0.0)"
   },
-  "functionTimeout": "01:00:00",
+  "functionTimeout": "00:45:00",
   "logging": {
     "logLevel": {
       "default": "Information"

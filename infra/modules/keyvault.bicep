@@ -10,6 +10,7 @@ param deployment_id string
 
 param keyvault_owner_object_id string
 param datafactory_principal_id string
+param function_app_principal_id string
 
 resource keyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: '${project}-kv-${env}-${deployment_id}'
@@ -41,6 +42,16 @@ resource keyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
       {
           tenantId: subscription().tenantId
           objectId: datafactory_principal_id
+          permissions: {
+              secrets: [
+                  'get'
+                  'list'
+              ]
+          }
+      }
+      {
+          tenantId: subscription().tenantId
+          objectId: function_app_principal_id
           permissions: {
               secrets: [
                   'get'

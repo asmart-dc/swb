@@ -7,7 +7,9 @@ param project string
 param env string
 param location string = resourceGroup().location
 param deployment_id string
+
 param adf_name string = '${project}-adf-${env}-${deployment_id}'
+
 // repository params
 param account_name string = 'factoryintl'
 param devops_project string = 'Factory Intl Data Warehouse'

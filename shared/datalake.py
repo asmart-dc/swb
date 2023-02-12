@@ -11,11 +11,11 @@ class Datalake:
         self.filesystem_name = filesystem_name
         self.directory_name = directory_name
 
-    def upload_file_to_directory(self, filename, data):
-        logging.info(f"Creating new file: {filename}")
+    def upload_file_to_directory(self, directory_name, filename, data):
+        logging.info(f"Creating new file: {directory_name}/{filename}")
         try:
             file_system_client = self.client.get_file_system_client(file_system=self.filesystem_name)
-            directory_client = file_system_client.get_directory_client(self.directory_name)
+            directory_client = file_system_client.get_directory_client(directory_name)
             file_client = directory_client.create_file(filename)
             file_client.upload_data(data, overwrite=True, connection_timeout=1000)
         except Exception as e:
@@ -31,5 +31,34 @@ class Datalake:
             file_reader = streamdownloader.readall()
 
             return file_reader
+        except Exception as e:
+            print(e)
+
+    def list_directory_contents(self, directory_name):
+        try:
+            file_system_client = self.client.get_file_system_client(file_system=self.filesystem_name)
+            files = file_system_client.get_paths(path=directory_name)
+
+            return files
+        except Exception as e:
+            print(e)
+
+    def directory_exists(self, directory_name):
+        try:
+            file_system_client = self.client.get_file_system_client(file_system=self.filesystem_name)
+            directory_client = file_system_client.get_directory_client(directory_name)
+            exists = directory_client.exists()
+
+            return exists
+        except Exception as e:
+            print(e)
+
+    def delete_file_from_directory(self, directory_name, filename):
+        logging.info(f"Deleting file: {filename}")
+        try:
+            file_system_client = self.client.get_file_system_client(file_system=self.filesystem_name)
+            directory_client = file_system_client.get_directory_client(directory_name)
+            file_client = directory_client.get_file_client(filename)
+            file_client.delete_file()
         except Exception as e:
             print(e)
