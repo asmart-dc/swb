@@ -8,7 +8,6 @@ from shared.processor import ArtifaxProcessor
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-
     logging.info('Python HTTP trigger function processed a request.')
 
     # Parse request body
@@ -20,7 +19,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     datalake_name = os.environ["DATALAKE_GEN_2_RESOURCE_NAME"]
     filesystem_raw_name = os.environ["DATALAKE_GEN_2_RAW_CONTAINER_NAME"]
     filesystem_structured_name = os.environ["DATALAKE_GEN_2_STRUCTURED_CONTAINER_NAME"]
-    directory_name = os.environ["DATALAKE_GEN_2_ROOT_DIRECTORY_NAME"]
+    directory_name = os.environ["DATALAKE_GEN_2_ARTIFAX_DIRECTORY_NAME"]
 
     # Get authentication credential
     azure_credential = DefaultAzureCredential()

@@ -19,7 +19,7 @@ class Datalake:
             file_client = directory_client.create_file(filename)
             file_client.upload_data(data, overwrite=True, connection_timeout=1000)
         except Exception as e:
-            print(e)
+            raise
 
     def download_file_from_directory(self, filename):
         logging.info(f"Downloading file: {filename}")
@@ -32,7 +32,7 @@ class Datalake:
 
             return file_reader
         except Exception as e:
-            print(e)
+            raise
 
     def list_directory_contents(self, directory_name):
         try:
@@ -41,7 +41,7 @@ class Datalake:
 
             return files
         except Exception as e:
-            print(e)
+            raise
 
     def directory_exists(self, directory_name):
         try:
@@ -51,7 +51,7 @@ class Datalake:
 
             return exists
         except Exception as e:
-            print(e)
+            raise
 
     def delete_file_from_directory(self, directory_name, filename):
         logging.info(f"Deleting file: {filename}")
@@ -61,4 +61,4 @@ class Datalake:
             file_client = directory_client.get_file_client(filename)
             file_client.delete_file()
         except Exception as e:
-            print(e)
+            raise

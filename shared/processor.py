@@ -342,8 +342,162 @@ class ArtifaxProcessor:
 
 
 class SpektrixRequest:
-    pass
+    def __init__(
+        self, landing_filename, datalake_name, filesystem_landing_name,
+        filesystem_raw_name, root_directory_name, azure_credential
+    ):
+        self.datalake_name = datalake_name
+        self.filesystem_landing_name = filesystem_landing_name
+        self.filesystem_raw_name = filesystem_raw_name
+        self.root_directory_name = root_directory_name
+        self.landing_filename = landing_filename
+        self.entity = self.landing_filename.split("-")[0][4:].lower()
+        self.import_date = datetime.now().strftime("%Y/%m/%d")
+        self.azure_credential = azure_credential
+
+    def process(self):
+        spektrix_file = self._download_from_landing_zone()
+        raw_filename = self._upload_to_raw_zone(spektrix_file)
+
+        return raw_filename
+
+    def _download_from_landing_zone(self):
+        datalake = Datalake(
+            self.azure_credential, self.datalake_name,
+            self.filesystem_landing_name, self.root_directory_name
+        )
+
+        landing_file = datalake.download_file_from_directory(self.landing_filename)
+
+        return landing_file
+
+    def _upload_to_raw_zone(self, file):
+        directory_name = f"{self.root_directory_name}/{self.entity}/{self.import_date}"
+        landing_filename = self.landing_filename[4:]
+
+        datalake = Datalake(
+            self.azure_credential, self.datalake_name,
+            self.filesystem_raw_name, self.root_directory_name
+        )
+
+        datalake.upload_file_to_directory(directory_name, landing_filename, file)
+
+        filename = f"{self.entity}/{self.import_date}/{landing_filename}"
+
+        return filename
 
 
 class SpektrixProcessor:
-    pass
+    def __init__(
+            self, raw_filepath, datalake_name, filesystem_raw_name,
+            filesystem_structured_name, root_directory_name, azure_credential
+    ):
+        self.raw_filepath = raw_filepath
+        self.entity = self.raw_filepath.split("/")[0]
+        self.raw_filename = self.raw_filepath.split("/")[-1]
+        self.datalake_name = datalake_name
+        self.filesystem_raw_name = filesystem_raw_name
+        self.filesystem_structured_name = filesystem_structured_name
+        self.root_directory_name = root_directory_name
+        self.import_date = datetime.now().strftime("%Y/%m/%d")
+        self.azure_credential = azure_credential
+
+    def process(self):
+        excel_file = self._download_from_raw_zone()
+        csv_file = self._entity(excel_file)
+        self._upload_to_structured_zone(csv_file)
+
+        return self.raw_filename
+
+    def _entity(self, file):
+        entity = f"_{self.entity}"
+        if hasattr(self, entity) and callable(func := getattr(self, entity)):
+            return func(file)
+
+    def _download_from_raw_zone(self):
+        datalake = Datalake(
+            self.azure_credential, self.datalake_name,
+            self.filesystem_raw_name, self.root_directory_name
+        )
+
+        raw_file = datalake.download_file_from_directory(self.raw_filepath)
+
+        return raw_file
+
+    def _upload_to_structured_zone(self, file, delete_files=True):
+        directory_name = f"{self.root_directory_name}/{self.entity}/{self.import_date}"
+
+        datalake = Datalake(
+            self.azure_credential, self.datalake_name,
+            self.filesystem_structured_name, self.root_directory_name
+        )
+
+        if delete_files:
+            self._delete_existing_files(datalake, directory_name)
+
+        datalake.upload_file_to_directory(directory_name, self.raw_filename, file)
+
+    def _delete_existing_files(self, datalake, directory_name):
+        if datalake.directory_exists(directory_name):
+            files = datalake.list_directory_contents(directory_name)
+            for file in files:
+                filename = file.name.split('/')[-1]
+                datalake.delete_file_from_directory(directory_name, filename)
+
+    def _convert_excel_to_csv(self, excel_file):
+        try:
+            df = pd.read_excel(excel_file)
+            csv_file = df.to_csv(index=False)
+            self.raw_filename = self.raw_filename.split(".")[0] + ".csv"
+        except Exception as e:
+            raise
+
+        return csv_file
+
+    def _customer(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
+
+    def _opportunity_stage_change(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
+
+    def _membership(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
+
+    def _event_instance(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
+
+    def _event(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
+
+    def _campaign(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
+
+    def _seat(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
+
+    def _transaction_item(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
