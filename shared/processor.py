@@ -113,15 +113,16 @@ class ArtifaxRequest:
 class ArtifaxProcessor:
     def __init__(
         self, endpoint, raw_filename, datalake_name, filesystem_raw_name,
-        filesystem_structured_name, directory_name, azure_credential
+        filesystem_structured_name, root_directory_name, azure_credential
     ):
+        self.directory_name = endpoint.split("/")[0]
         self.endpoint = endpoint
         self.entity = endpoint.split("/")[1]
         self.raw_filename = raw_filename
         self.datalake_name = datalake_name
         self.filesystem_raw_name = filesystem_raw_name
         self.filesystem_structured_name = filesystem_structured_name
-        self.directory_name = directory_name
+        self.root_directory_name = root_directory_name
         self.import_date = datetime.now().strftime("%Y/%m/%d")
         self.azure_credential = azure_credential
 
@@ -145,7 +146,7 @@ class ArtifaxProcessor:
     def _download_from_lake(self):
         datalake = Datalake(
             self.azure_credential, self.datalake_name,
-            self.filesystem_raw_name, self.directory_name
+            self.filesystem_raw_name, self.root_directory_name
         )
 
         raw_file = datalake.download_file_from_directory(self.raw_filename)
@@ -157,11 +158,11 @@ class ArtifaxProcessor:
             print(e)
 
     def _upload_to_lake(self, filename, data, delete_files=True):
-        directory_name = f"{self.directory_name}/{self.endpoint}/{filename}/{self.import_date}"
+        directory_name = f"{self.root_directory_name}/{self.directory_name}/{filename}/{self.import_date}"
 
         datalake = Datalake(
             self.azure_credential, self.datalake_name,
-            self.filesystem_structured_name, self.directory_name
+            self.filesystem_structured_name, self.root_directory_name
         )
 
         if delete_files:
@@ -501,3 +502,217 @@ class SpektrixProcessor:
         csv_file = self._convert_excel_to_csv(excel_file)
 
         return csv_file
+
+
+class AccessRequest:
+    def __init__(
+        self, keyvault_name, datalake_name, filesystem_raw_name, root_directory_name,
+        endpoint, api_secret, client_secret, azure_credential
+    ):
+        self.directory_name = endpoint
+        self.endpoint = endpoint.split("/")[1]
+        self.api_secret = api_secret
+        self.client_secret = client_secret
+        self.keyvault_name = keyvault_name
+        self.keyvault = KeyVault(azure_credential, self.keyvault_name)
+        self.datalake_name = datalake_name
+        self.filesystem_raw_name = filesystem_raw_name
+        self.root_directory_name = root_directory_name
+        self.import_date = datetime.now().strftime("%Y/%m/%d")
+        self.azure_credential = azure_credential
+
+    def process(self):
+        self._get_api_secrets()
+        self._get_data()
+        filename = self._upload_to_raw_zone()
+
+        return filename
+
+    def _get_api_secrets(self):
+        self.api_key = self.keyvault.get_key_vault_secret(self.api_secret)
+        self.client_name = self.keyvault.get_key_vault_secret(self.client_secret)
+        self.base_url = f"https://{self.client_name}.dataengine.accessacloud.com/ds/"
+
+    def _get_data(self, parameters=None):
+        self.url = self.base_url + self.endpoint
+        self.method = "GET"
+        data = self._make_request(parameters=parameters)
+        self.data = json.dumps(data, sort_keys=True, indent=4)
+
+    def _make_request(self, parameters=None):
+        headers = {'Authorization': self.api_key}
+        session = Session()
+        req = Request(method=self.method, url=self.url, headers=headers, params=parameters)
+
+        logging.info(f"Requesting: {self.url}")
+        try:
+            r = session.send(req.prepare())
+            r.raise_for_status()
+            try:
+                return r.json()
+            except JSONDecodeError:
+                return r.content
+        except HTTPError as exc:
+            logging.info(exc.response.text)
+            raise
+
+    def _upload_to_raw_zone(self):
+        directory_name = f"{self.root_directory_name}/{self.directory_name}/{self.import_date}"
+
+        datalake = Datalake(
+            self.azure_credential, self.datalake_name,
+            self.filesystem_raw_name, self.root_directory_name
+        )
+
+        now = datetime.now().strftime("%Y%m%dT%H%M%S")
+        filename = f"{self.endpoint}_{now}.json"
+
+        datalake.upload_file_to_directory(directory_name, filename, self.data)
+
+        return f"{self.directory_name}/{self.import_date}/{filename}"
+
+
+class AccessProcessor:
+    def __init__(
+            self, raw_filepath, datalake_name, filesystem_raw_name,
+            filesystem_structured_name, root_directory_name, azure_credential
+    ):
+        self.raw_filepath = raw_filepath
+        self.raw_filename = self.raw_filepath.split("/")[-1]
+        self.directory_name = self.raw_filepath.split("/")[0]
+        self.entity = '_'.join(f"{self.raw_filepath}".split("/")[0:2])
+        self.datalake_name = datalake_name
+        self.filesystem_raw_name = filesystem_raw_name
+        self.filesystem_structured_name = filesystem_structured_name
+        self.root_directory_name = root_directory_name
+        self.import_date = datetime.now().strftime("%Y/%m/%d")
+        self.azure_credential = azure_credential
+
+    def process(self):
+        json_file = self._download_from_lake()
+        json_data = json.loads(json_file)
+        normalised_data = self._entity(json_data)
+
+        for file in normalised_data:
+            filename = file['filename']
+            data = file['data']
+            self._upload_to_structured_zone(filename, data)
+
+        return self.raw_filename
+
+    def _entity(self, json_data):
+        entity = f"_{self.entity}"
+        if hasattr(self, entity) and callable(func := getattr(self, entity)):
+            return func(json_data)
+
+    def _download_from_lake(self):
+        datalake = Datalake(
+            self.azure_credential, self.datalake_name,
+            self.filesystem_raw_name, self.root_directory_name
+        )
+
+        raw_file = datalake.download_file_from_directory(self.raw_filepath)
+
+        try:
+            json_file = raw_file.decode('utf-8')  # decode bytes to str
+            return json_file
+        except JSONDecodeError as e:
+            print(e)
+
+    def _upload_to_structured_zone(self, filename, data, delete_files=True):
+        directory_name = f"{self.root_directory_name}/{self.directory_name}/{filename}/{self.import_date}"
+
+        datalake = Datalake(
+            self.azure_credential, self.datalake_name,
+            self.filesystem_structured_name, self.root_directory_name
+        )
+
+        if delete_files:
+            self._delete_existing_files(datalake, directory_name)
+
+        datalake.upload_file_to_directory(directory_name, self.raw_filename, data)
+
+    def _delete_existing_files(self, datalake, directory_name):
+        if datalake.directory_exists(directory_name):
+            files = datalake.list_directory_contents(directory_name)
+            for file in files:
+                filename = file.name.split('/')[-1]
+                datalake.delete_file_from_directory(directory_name, filename)
+
+    def _hr_person(self, json_data):
+        logging.info("Normalise person entity")
+
+        normalised_data = []
+
+        # person
+        df = pd.json_normalize(json_data)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'person', 'data': data})
+        self.raw_filename = self.raw_filename.split(".")[0] + ".csv"
+
+        return normalised_data
+
+    def _hr_person_ses(self, json_data):
+        logging.info("Normalise person ses entity")
+
+        normalised_data = []
+
+        # person
+        df = pd.json_normalize(json_data)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'person_ses', 'data': data})
+        self.raw_filename = self.raw_filename.split(".")[0] + ".csv"
+
+        return normalised_data
+
+    def _hr_appointment(self, json_data):
+        logging.info("Normalise appointment entity")
+
+        normalised_data = []
+
+        # person
+        df = pd.json_normalize(json_data)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'appointment', 'data': data})
+        self.raw_filename = self.raw_filename.split(".")[0] + ".csv"
+
+        return normalised_data
+
+    def _finance_nl_account(self, json_data):
+        logging.info("Normalise account entity")
+
+        normalised_data = []
+
+        # person
+        df = pd.json_normalize(json_data)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'nl_account', 'data': data})
+        self.raw_filename = self.raw_filename.split(".")[0] + ".csv"
+
+        return normalised_data
+
+    def _finance_costcentre(self, json_data):
+        logging.info("Normalise costcentre entity")
+
+        normalised_data = []
+
+        # person
+        df = pd.json_normalize(json_data)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'costecentre', 'data': data})
+        self.raw_filename = self.raw_filename.split(".")[0] + ".csv"
+
+        return normalised_data
+
+    def _finance_costheader(self, json_data):
+        logging.info("Normalise costheader entity")
+
+        normalised_data = []
+
+        # person
+        df = pd.json_normalize(json_data)
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'costheader', 'data': data})
+        self.raw_filename = self.raw_filename.split(".")[0] + ".csv"
+
+        return normalised_data
