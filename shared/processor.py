@@ -32,6 +32,8 @@ class ArtifaxRequest:
         self._get_api_secrets()
         if self.artifax_endpoint == 'arrangements/event':
             self._get_event_data()
+        elif self.artifax_endpoint == 'finances/invoice_schedule':
+            self._get_invoice_schedule_data()
         else:
             self._get_data()
         self._upload_to_lake()
@@ -53,6 +55,7 @@ class ArtifaxRequest:
             arrangement_ids.append(
                 arrangement['arrangement_id']
             )
+
         logging.info(f"{len(arrangement_ids)} arrangements to retrieve events for.")
 
         self.artifax_endpoint = endpoint
@@ -71,6 +74,18 @@ class ArtifaxRequest:
                 continue
 
         self.data = json.dumps(event_data, sort_keys=True, indent=4)
+
+    def _get_invoice_schedule_data(self, previous_days=200):
+        logging.info(f"Retrieving invoice schedules for previous {previous_days} days.")
+
+        params = {
+            'object_type': '1,2,3',
+            'date': 'range',
+            'range': 'last_days',
+            'date_range': previous_days
+        }
+
+        self._get_data(params)
 
     def _get_data(self, parameters=None):
         self.url = self.artifax_base_url + self.artifax_endpoint
@@ -338,6 +353,70 @@ class ArtifaxProcessor:
         df = pd.json_normalize(json_data)
         data = df.to_csv(index=False)
         normalised_data.append({'filename': 'event_status', 'data': data})
+
+        return normalised_data
+
+    def _invoice_schedule(self, json_data):
+        logging.info("Normalise invoice schedule entity")
+
+        normalised_data = []
+
+        # invoice schedule
+        cols = [
+            'object_type',
+            'arrangement_id',
+            'ad_hoc_charge_id',
+            'ad_hoc_charge_name',
+            'ad_hoc_charge_type_id',
+            'ad_hoc_charge_type_name',
+            'event_id',
+            'event_status_id',
+            'room_id',
+            'venue_id',
+            'locale_id',
+            'price_code_title_id',
+            'price_code_name',
+            'resource_booking_id',
+            'resource_id',
+            'resource_name',
+            'resource_type_id',
+            'resource_type_name',
+            'unit_price',
+            'unit_cost',
+            'quantity',
+            'source_amount',
+            'amount_type_id',
+            'amount_type_name',
+            'entity_id',
+            'entity_fullname',
+            'purchase_order_number',
+            'supplier_entity_id',
+            'supplier_entity_full_name',
+            'invoice_date',
+            'tax_rate_1_id',
+            'tax_rate_1_name',
+            'tax_rate_1_code',
+            'tax_rate_2_id',
+            'tax_rate_2_name',
+            'tax_rate_2_code',
+            'net_amount',
+            'tax_rate_1_amount',
+            'tax_rate_2_amount',
+            'tax_amount',
+            'gross_amount',
+            'invoice_number',
+            'nominal_ledger_code_id',
+            'nominal_ledger_code',
+            'cost_centre_code_id',
+            'cost_centre_code',
+            'department_code_id',
+            'department_code',
+            'currency'
+        ]
+        df = pd.json_normalize(json_data)
+        df = df[cols]
+        data = df.to_csv(index=False)
+        normalised_data.append({'filename': 'invoice_schedule', 'data': data})
 
         return normalised_data
 
@@ -699,7 +778,7 @@ class AccessProcessor:
         # person
         df = pd.json_normalize(json_data)
         data = df.to_csv(index=False)
-        normalised_data.append({'filename': 'costecentre', 'data': data})
+        normalised_data.append({'filename': 'costcentre', 'data': data})
         self.raw_filename = self.raw_filename.split(".")[0] + ".csv"
 
         return normalised_data
