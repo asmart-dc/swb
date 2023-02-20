@@ -8,7 +8,7 @@ set -o xtrace # For debugging
 #####################
 # DEPLOY ARM TEMPLATE
 
-#echo "Deploying to Subscription: $AZURE_SUBSCRIPTION_ID"
+echo "Deploying to Subscription: $AZURE_SUBSCRIPTION_ID"
 
 # Create resource group
 resource_group_name="$PROJECT-$DEPLOYMENT_ID-$ENV_NAME-rg"
@@ -63,7 +63,7 @@ azure_storage_key=$(az storage account keys list \
     jq -r '.[0].value')
 
 # Create file systems
-file_systems=("raw" "structured" "curated" "sandbox")
+file_systems=("landing" "raw" "structured" "curated" "sandbox" "logs" "reference")
 for file_system in "${file_systems[@]}"; do
     echo "Creating ADLS Gen2 File system: $file_system"
     az storage container create --name "$file_system" --account-name "$azure_storage_account" --account-key "$azure_storage_key"
@@ -71,14 +71,14 @@ done
 
 # Add source system folders
 for file_system in raw structured; do
-  sources=("Artifax" "Spektrix" "Access HR" "Access Financials" "TeamTailor")
+  sources=("artifax" "spektrix" "access")
   for folder in "${sources[@]}"; do
       echo "Creating folder: $folder"
-      az storage fs directory create -n "Provider/$folder" -f "$file_system" --account-name "$azure_storage_account" --account-key "$azure_storage_key"
+      az storage fs directory create -n "provider/$folder" -f "$file_system" --account-name "$azure_storage_account" --account-key "$azure_storage_key"
   done
-  az storage fs directory create -n "Reference" -f "$file_system" --account-name "$azure_storage_account" --account-key "$azure_storage_key"
-  az storage fs directory create -n "Log" -f "$file_system" --account-name "$azure_storage_account" --account-key "$azure_storage_key"
 done
+az storage fs directory create -n "provider/spektrix/reports" -f "landing" --account-name "$azure_storage_account" --account-key "$azure_storage_key"
+az storage fs directory create -n "adf" -f "logs" --account-name "$azure_storage_account" --account-key "$azure_storage_key"
 
 # Set Keyvault secrets
 az keyvault secret set --vault-name "$kv_name" --name "datalakeAccountName" --value "$azure_storage_account"
@@ -114,6 +114,20 @@ az keyvault secret set --vault-name "$kv_name" --name "sqldwConnectionString" --
 # Store in Keyvault
 datafactory_name=$(echo "$arm_output" | jq -r '.properties.outputs.datafactory_name.value')
 az keyvault secret set --vault-name "$kv_name" --name "adfName" --value "$datafactory_name"
+
+####################
+# FUNCTION APP
+
+# Retrieve FA Key
+function_app_name=$(echo "$arm_output" | jq -r '.properties.outputs.function_app_name.value')
+azure_function_app_key=$(az functionapp keys list \
+    --resource-group "$resource_group_name" \
+    --name "$function_app_name" \
+    --output json |
+    jq -r '.functionKeys.default')
+
+# Store in keyvault
+az keyvault secret set --vault-name "$kv_name" --name "functionAppKey" --value "$azure_function_app_key"
 
 ####################
 # AZDO Variable Groups

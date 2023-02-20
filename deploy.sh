@@ -15,7 +15,7 @@ project="fidwh" # CONSTANT - this is prefixed to all deployed resources
 ###################
 # DEPLOY FOR EACH ENVIRONMENT
 
-for env_name in dev; do   #dev prod
+for env_name in prod; do   #dev prod
     PROJECT=$project \
     DEPLOYMENT_ID=$DEPLOYMENT_ID \
     ENV_NAME=$env_name \

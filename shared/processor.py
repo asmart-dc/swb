@@ -564,13 +564,19 @@ class SpektrixProcessor:
 
         return csv_file
 
+    def _event_attributes(self, excel_file):
+        logging.info(f"Converting file to csv")
+        csv_file = self._convert_excel_to_csv(excel_file)
+
+        return csv_file
+
     def _campaign(self, excel_file):
         logging.info(f"Converting file to csv")
         csv_file = self._convert_excel_to_csv(excel_file)
 
         return csv_file
 
-    def _seat(self, excel_file):
+    def _ticket_scans(self, excel_file):
         logging.info(f"Converting file to csv")
         csv_file = self._convert_excel_to_csv(excel_file)
 
